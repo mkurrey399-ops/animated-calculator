@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Animated Calculator</title>
+<style>
+  :root{
+    --bg:#0f1220;
+    --panel:#171a2b;
+    --accent:#7c5cff;
+    --accent-2:#22d3ee;
+    --text:#e8ecf1;
+    --muted:#a9b0c3;
+    --danger:#ff5c7c;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  html,body{
+    height:100%;
+    margin:0;
+    background: radial-gradient(1000px 700px at 20% 10%, #1f2340 0%, #0f1220 60%, #0b0e1a 100%);
+    color:var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+  }
+
+  .wrap{
+    min-height:100%;
+    display:grid;
+    place-items:center;
+    padding:32px;
+  }
+
+  /* Neon ring backdrop animation */
+  .halo{
+    position:fixed;
+    inset:auto auto 10% auto;
+    width:540px;
+    height:540px;
+    filter: blur(40px) saturate(140%);
+    pointer-events:none;
+    z-index:0;
+    opacity:.55;
+    animation: float 8s ease-in-out infinite alternate;
+  }
+  .halo:before, .halo:after{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    background: conic-gradient(from 120deg, #7c5cff, #22d3ee, #7c5cff);
+    mix-blend-mode: screen;
+  }
+  .halo:after{ transform: scale(.8) rotate(40deg); opacity:.7; }
+
+  @keyframes float{
+    from{ transform: translateY(0) rotate(0); }
+    to{ transform: translateY(-18px) rotate(8deg); }
+  }
+
+  .calc{
+    position:relative;
+    z-index:1;
+    width:min(360px, 92vw);
+    background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.0)) , var(--panel);
+    border:1px solid rgba(255,255,255,.06);
+    box-shadow: var(--shadow), inset 0 0 0 1px rgba(255,255,255,.02);
+    border-radius:22px;
+    overflow:hidden;
+    transform: translateY(18px) scale(.98);
+    animation: enter .7s cubic-bezier(.2,.9,.2,1) forwards;
+  }
+
+  @keyframes enter{
+    to{ transform: translateY(0) scale(1); }
+  }
+
+  .display{
+    position:relative;
+    padding:22px 18px 8px;
+    border-bottom:1px solid rgba(255,255,255,.06);
+    background: linear-gradient(180deg, rgba(124,92,255,.06), transparent 70%);
+  }
+
+  .display .expr{
+    height:28px;
+    color:var(--muted);
+    font-size:14px;
+    letter-spacing:.3px;
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+    margin-bottom:6px;
+  }
+  .display .screen{
+    font-variant-numeric: tabular-nums;
+    font-size:34px;
+    line-height:1.25;
+    text-align:right;
+    min-height:42px;
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+    text-shadow: 0 0 18px rgba(124,92,255,.25);
+    animation: pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%{ text-shadow: 0 0 10px rgba(124,92,255,.18), 0 0 0 rgba(34,211,238,0); }
+    50%{ text-shadow: 0 0 24px rgba(124,92,255,.45), 0 0 18px rgba(34,211,238,.25); }
+    100%{ text-shadow: 0 0 10px rgba(124,92,255,.18), 0 0 0 rgba(34,211,238,0); }
+  }
+
+  .glow{
+    position:absolute;
+    inset:auto 0 -26px 0;
+    height:50px;
+    background: radial-gradient(60% 100% at 50% 0%, rgba(124,92,255,.35), rgba(34,211,238,.0) 70%);
+    filter: blur(18px);
+    pointer-events:none;
+  }
+
+  .keys{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap:12px;
+    padding:16px;
+  }
+
+  button{
+    appearance:none;
+    border:0;
+    border-radius:14px;
+    padding:16px;
+    font-size:18px;
+    color:var(--text);
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01)), #1b1f33;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.06),
+      0 6px 18px rgba(0,0,0,.35);
+    cursor:pointer;
+    transition: transform .08s ease, filter .2s ease, box-shadow .15s ease;
+    position:relative;
+    overflow:hidden;
+  }
+  button:active{
+    transform: translateY(2px) scale(.99);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.06),
+      0 4px 12px rgba(0,0,0,.3);
+  }
+
+  /* Ripple animation */
+  button::after{
+    content:"";
+    position:absolute;
+    inset:auto;
+    width:8px; height:8px;
+    background: radial-gradient(circle, rgba(255,255,255,.35), transparent 60%);
+    border-radius:50%;
+    transform: translate(-50%,-50%) scale(0);
+    pointer-events:none;
+  }
+  button.rippling::after{
+    animation: ripple .45s ease-out;
+  }
+  @keyframes ripple{
+    from{ transform: translate(var(--rx, -50%), var(--ry, -50%)) scale(.2); opacity:.55; }
+    to{ transform: translate(var(--rx, -50%), var(--ry, -50%)) scale(16); opacity:0; }
+  }
+
+  .op{ background: linear-gradient(180deg, rgba(34,211,238,.12), rgba(34,211,238,.02)), #1a2034; color:#d9fbff; }
+  .eq{ background: linear-gradient(180deg, rgba(124,92,255,.18), rgba(124,92,255,.02)), #232643; grid-column: span 2; }
+  .danger{ background: linear-gradient(180deg, rgba(255,92,124,.14), rgba(255,92,124,.02)), #2a1b25; }
+
+  .foot{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    padding:6px 12px 16px;
+    color:var(--muted);
+    font-size:12px;
+  }
+  .dot{
+    width:6px;height:6px;border-radius:50%;
+    background: linear-gradient(180deg, #7c5cff, #22d3ee);
+    box-shadow: 0 0 10px rgba(124,92,255,.7);
+    animation: blink 1.8s ease-in-out infinite;
+  }
+  @keyframes blink{
+    0%,100%{ opacity:.35; transform: translateY(0); }
+    50%{ opacity:1; transform: translateY(-2px); }
+  }
+</style>
+</head>
+<body>
+  <div class="halo" aria-hidden="true"></div>
+  <div class="wrap">
+    <div class="calc" role="application" aria-label="Animated Calculator">
+      <div class="display">
+        <div class="expr" id="expr" aria-live="polite"></div>
+        <div class="screen" id="screen" aria-live="polite">0</div>
+        <div class="glow" aria-hidden="true"></div>
+      </div>
+      <div class="keys" id="keys">
+        <button class="danger" data-act="clear">C</button>
+        <button class="danger" data-act="back">⌫</button>
+        <button class="op" data-op="%">%</button>
+        <button class="op" data-op="÷">÷</button>
+
+        <button data-num="7">7</button>
+        <button data-num="8">8</button>
+        <button data-num="9">9</button>
+        <button class="op" data-op="×">×</button>
+
+        <button data-num="4">4</button>
+        <button data-num="5">5</button>
+        <button data-num="6">6</button>
+        <button class="op" data-op="−">−</button>
+
+        <button data-num="1">1</button>
+        <button data-num="2">2</button>
+        <button data-num="3">3</button>
+        <button class="op" data-op="+">+</button>
+
+        <button data-num="0" style="grid-column: span 2">0</button>
+        <button data-num=".">.</button>
+        <button class="eq" data-act="eq">=</button>
+      </div>
+      <div class="foot">
+        <span class="dot"></span>
+        <span>Keyboard: 0–9 . + − × ÷ Enter Backspace c</span>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const screen = document.getElementById('screen');
+  const exprEl = document.getElementById('expr');
+  const keys = document.getElementById('keys');
+
+  let current = '0';
+  let pending = null;     // { a:number, op:string }
+  let justEvaluated = false;
+
+  function format(n){
+    if (typeof n !== 'number' || !isFinite(n)) return 'Error';
+    const s = n.toString();
+    if (s.includes('e')) return s;
+    const [i, d=''] = s.split('.');
+    const int = Number(i).toLocaleString(undefined, { maximumFractionDigits:0 });
+    return d ? int + '.' + d.slice(0,10) : int;
+  }
+
+  function show(){
+    screen.textContent = current;
+    const part = pending ? `${format(pending.a)} ${pending.op}` : '';
+    exprEl.textContent = part;
+  }
+
+  function inputDigit(d){
+    if (justEvaluated) { current = '0'; justEvaluated = false; }
+    if (d === '.'){
+      if (!current.includes('.')) current += '.';
+      return show();
+    }
+    if (current === '0') current = d;
+    else current += d;
+    show();
+  }
+
+  function setOp(op){
+    const x = parseFloat(current || '0');
+    if (pending && !justEvaluated){
+      // chain
+      const y = x;
+      const result = compute(pending.a, pending.op, y);
+      pending = { a: result, op };
+      current = '0';
+    } else {
+      pending = { a: x, op };
+      current = '0';
+      justEvaluated = false;
+    }
+    show();
+  }
+
+  function compute(a, op, b){
+    switch(op){
+      case '+': return a + b;
+      case '−': return a - b;
+      case '×': return a * b;
+      case '÷': return b === 0 ? NaN : a / b;
+      case '%': return a % b;
+      default: return b;
+    }
+  }
+
+  function equals(){
+    if (!pending) return;
+    const y = parseFloat(current || '0');
+    const z = compute(pending.a, pending.op, y);
+    current = String(Number.isFinite(z) ? format(z) : 'Error');
+    pending = null;
+    justEvaluated = true;
+    show();
+    flashEqual();
+  }
+
+  function clearAll(){
+    current = '0';
+    pending = null;
+    justEvaluated = false;
+    show();
+  }
+
+  function backspace(){
+    if (justEvaluated){ clearAll(); return; }
+    if (current.length <= 1 || (current.length === 2 && current.startsWith('-'))) current = '0';
+    else current = current.slice(0, -1);
+    show();
+  }
+
+  // Button ripple
+  function addRipple(btn, e){
+    const rect = btn.getBoundingClientRect();
+    const x = (e.clientX || (rect.left + rect.width/2)) - rect.left;
+    const y = (e.clientY || (rect.top + rect.height/2)) - rect.top;
+    btn.style.setProperty('--rx', `${x}px`);
+    btn.style.setProperty('--ry', `${y}px`);
+    btn.classList.remove('rippling');
+    void btn.offsetWidth; // restart
+    btn.classList.add('rippling');
+    setTimeout(()=>btn.classList.remove('rippling'), 450);
+  }
+
+  // Equal flash animation (screen bounce)
+  function flashEqual(){
+    screen.style.transition = 'transform .15s ease, filter .2s ease';
+    screen.style.transform = 'translateY(-2px) scale(1.02)';
+    screen.style.filter = 'brightness(1.2)';
+    setTimeout(()=>{
+      screen.style.transform = '';
+      screen.style.filter = '';
+    }, 160);
+  }
+
+  keys.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    addRipple(btn, e);
+
+    if (btn.dataset.num){
+      inputDigit(btn.dataset.num);
+    } else if (btn.dataset.op){
+      setOp(btn.dataset.op);
+    } else if (btn.dataset.act === 'eq'){
+      equals();
+    } else if (btn.dataset.act === 'clear'){
+      clearAll();
+    } else if (btn.dataset.act === 'back'){
+      backspace();
+    }
+  });
+
+  // Keyboard support
+  window.addEventListener('keydown', (e)=>{
+    const key = e.key;
+    const mapOp = { '/':'÷', '*':'×', '+':'+', '-':'−', '%':'%' };
+    if ((key >= '0' && key <= '9') || key === '.'){
+      inputDigit(key);
+    } else if (key in mapOp){
+      setOp(mapOp[key]);
+    } else if (key === 'Enter' || key === '='){
+      e.preventDefault();
+      equals();
+    } else if (key === 'Backspace'){
+      backspace();
+    } else if (key.toLowerCase() === 'c'){
+      clearAll();
+    }
+    // Visual press hint
+    const selector =
+      (key >= '0' && key <= '9') ? `button[data-num="${key}"]` :
+      key === '.' ? `button[data-num="."]` :
+      (key in mapOp) ? `button[data-op="${mapOp[key]}"]` :
+      (key === 'Enter' || key === '=') ? `button[data-act="eq"]` :
+      key === 'Backspace' ? `button[data-act="back"]` :
+      key.toLowerCase() === 'c' ? `button[data-act="clear"]` : null;
+
+    if (selector){
+      const btn = document.querySelector(selector);
+      if (btn){
+        addRipple(btn, { clientX: btn.getBoundingClientRect().left + 20, clientY: btn.getBoundingClientRect().top + 20 });
+        btn.animate([{ transform:'translateY(0)' }, { transform:'translateY(2px)' }, { transform:'translateY(0)' }], { duration:140, easing:'ease-out' });
+      }
+    }
+  });
+
+  // Initialize
+  show();
+})();
+</script>
+</body>
+</html>
